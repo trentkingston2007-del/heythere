@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>translator</title>
+<style>
+:root{
+  --bg1:#071014; --bg2:#0f1b26; --card:#0f1720cc; --accent:#5b8cff; --glass: rgba(255,255,255,0.04);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:Inter, Arial, Helvetica, sans-serif; background:linear-gradient(160deg,var(--bg1),var(--bg2)); color:#e6eef8; -webkit-font-smoothing:antialiased;
+  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+}
+.wrap{width:100%; max-width:760px; position:relative;}
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+  border-radius:16px; padding:18px; box-shadow:0 8px 30px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.04);
+}
+header{display:flex; gap:12px; align-items:center;}
+.brand{display:flex; gap:12px; align-items:center}
+.logo{width:48px; height:48px; background:linear-gradient(135deg,var(--accent),#72ffd9); display:grid; place-items:center; border-radius:10px; box-shadow:0 6px 18px rgba(91,140,255,0.12);}
+.logo svg{width:28px;height:28px}
+h1{font-size:20px;margin:0}
+p.lead{margin:0;color:rgba(230,238,248,0.7); font-size:13px}
+.controls{display:grid; grid-template-columns:1fr 120px; gap:12px; margin-top:14px}
+.controls input[type=text]{width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:var(--glass); color:inherit}
+.btn{display:inline-flex; gap:8px; align-items:center; justify-content:center; padding:12px 14px; border-radius:10px; border:none; cursor:pointer; font-weight:600}
+.btn.primary{background:linear-gradient(90deg,var(--accent), #7ab4ff); color:#032;}
+.btn.ghost{background:transparent; border:1px solid rgba(255,255,255,0.06); color:inherit}
+.row{display:flex; gap:12px; margin-top:12px}
+.output{margin-top:14px; padding:14px; border-radius:10px; background:rgba(0,0,0,0.35); min-height:84px; font-size:15px; white-space:pre-wrap; word-break:break-word;}
+.actions{display:flex; gap:8px; margin-top:10px}
+.small{font-size:13px; padding:8px 10px}
+footer{margin-top:12px; display:flex; justify-content:space-between; align-items:center; gap:12px; color:rgba(230,238,248,0.6); font-size:13px}
+@media (max-width:520px){
+  .controls{grid-template-columns:1fr;}
+  .row{flex-direction:column}
+  .brand h1{font-size:18px}
+}
+.icon{width:18px;height:18px;display:inline-block;vertical-align:middle}
+/* popup styles */
+.toast{
+  position:absolute; top:10px; left:50%; transform:translateX(-50%); background:#ff4c4c; color:#fff;
+  padding:10px 16px; border-radius:8px; font-size:13px; opacity:0; pointer-events:none; transition:opacity 0.4s, top 0.4s;
+}
+.toast.show{opacity:1; top:30px; pointer-events:auto;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toast" id="toast"></div>
+  <div class="card">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="4" fill="white" opacity="0.06"/><path d="M7 15c2-4 4-6 8-6" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <h1>ELISTAN - TRANSLATOR</h1>
+          <p class="lead">Type what you either need to translate, or say.</p>
+        </div>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:8px; align-items:center">
+        <button class="btn ghost small" id="toggleDecode">🔁 Decode</button>
+        <button class="btn ghost small" id="btnCopy">📋 Copy</button>
+      </div>
+    </header>
+
+    <div class="controls">
+      <input id="inputText" type="text" placeholder="Type English here... (e.g. hi stephen)" aria-label="Text to translate">
+      <button class="btn primary" id="btnTranslate">Translate ▶</button>
+    </div>
+
+    <div class="row">
+      <div style="flex:1">
+        <div class="output" id="outputBox">Translation appears here...</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn ghost small" id="btnClear">✖ Clear</button>
+      <button class="btn ghost small" id="btnSample">💡 Sample</button>
+      <div style="flex:1"></div>
+      <div style="font-size:12px;opacity:0.8">- Elistan</div>
+    </div>
+
+    <footer>
+      <div id="status">Mode: <strong id="modeLabel">Encode</strong></div>
+      <div id="length">0 chars</div>
+    </footer>
+  </div>
+</div>
+
+<script>
+const cipher = {
+  a: "xo", b: "ri", c: "q", d: "ze", e: "va", f: "tu",
+  g: "ke", h: "lo", i: "si", j: "pa", k: "du", l: "me",
+  m: "ni", n: "wa", o: "ra", p: "gu", q: "ti", r: "sa",
+  s: "bo", t: "ka", u: "we", v: "jo", w: "fi", x: "yu", y: "ha", z: "ce"
+};
+const simpleCipher = {
+  a:"x", b:"r", c:"q", d:"z", e:"v", f:"t",
+  g:"k", h:"l", i:"s", j:"p", k:"d", l:"m",
+  m:"n", n:"w", o:"a", p:"g", q:"i", r:"s",
+  s:"b", t:"k", u:"e", v:"j", w:"f", x:"y", y:"h", z:"c"
+};
+const reverse = Object.fromEntries(Object.entries(cipher).map(([k,v]) => [v,k]));
+const reverseSimple = Object.fromEntries(Object.entries(simpleCipher).map(([k,v]) => [v,k]));
+
+const inputEl = document.getElementById('inputText');
+const outEl = document.getElementById('outputBox');
+const btnTranslate = document.getElementById('btnTranslate');
+const btnCopy = document.getElementById('btnCopy');
+const btnClear = document.getElementById('btnClear');
+const btnSample = document.getElementById('btnSample');
+const toggleDecode = document.getElementById('toggleDecode');
+const modeLabel = document.getElementById('modeLabel');
+const lengthEl = document.getElementById('length');
+const toast = document.getElementById('toast');
+let decodeMode = false;
+
+function showToast(message){
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'),2000);
+}
+
+function encodeText(text){
+  const useSimple = text.length > 100;
+  const map = useSimple ? simpleCipher : cipher;
+  return text.split('').map(ch=>{
+    if(/[a-zA-Z]/.test(ch)){
+      return map[ch.toLowerCase()] || ch;
+    }
+    return ch;
+  }).join('');
+}
+
+function decodeText(text){
+  const useSimple = text.length > 100;
+  const map = useSimple ? reverseSimple : reverse;
+  let out = '';
+  for(let i=0;i<text.length;){
+    if(!useSimple){
+      const two = text.substr(i,2);
+      const one = text.substr(i,1);
+      if(map[two]){ out+=map[two]; i+=2; }
+      else if(map[one]){ out+=map[one]; i+=1; }
+      else { out+=text[i]; i+=1; }
+    } else {
+      const one = text.substr(i,1);
+      out += map[one] || one;
+      i+=1;
+    }
+  }
+  return out;
+}
+
+function updateLength(text){ lengthEl.textContent = text.length + ' chars'; }
+
+function doTranslate(){
+  let val = inputEl.value.trim();
+  if(!val){
+    showToast('Please type something to translate.');
+    updateLength('');
+    return;
+  }
+  try{
+    let out = decodeMode ? decodeText(val) : encodeText(val);
+    outEl.textContent = out || '—';
+    updateLength(out);
+  }catch(e){
+    showToast('Error during translation.');
+    outEl.textContent='—';
+  }
+}
+
+btnTranslate.addEventListener('click', doTranslate);
+inputEl.addEventListener('keydown', e=>{ if(e.key==='Enter') doTranslate(); });
+
+btnCopy.addEventListener('click', async ()=>{
+  try{
+    await navigator.clipboard.writeText(outEl.textContent||'');
+    showToast('Copied to clipboard!');
+  }catch(e){ showToast('Copy failed.'); }
+});
+
+btnClear.addEventListener('click', ()=>{ inputEl.value=''; outEl.textContent='Translation appears here...'; updateLength(''); });
+btnSample.addEventListener('click', ()=>{ inputEl.value='hi stephen'; doTranslate(); });
+
+toggleDecode.addEventListener('click', ()=>{
+  decodeMode = !decodeMode;
+  modeLabel.textContent = decodeMode ? 'Decode' : 'Encode';
+  toggleDecode.textContent = decodeMode ? '🔁 Decode' : '🔒 Encode';
+  btnTranslate.textContent = decodeMode ? 'Decode ▶' : 'Translate ▶';
+});
+
+updateLength('');
+</script>
+</body>
+</html>
